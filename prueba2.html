@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Test</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        video {
+            border: 2px solid #333;
+            border-radius: 8px;
+            width: 640px;
+            height: 480px;
+            background-color: #000;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <video id="camera" autoplay playsinline></video>
+    <div id="status">Initializing camera...</div>
+
+    <script>
+        const videoElement = document.getElementById('camera');
+        const statusDiv = document.getElementById('status');
+
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                videoElement.srcObject = stream;
+                statusDiv.textContent = 'Camera started successfully.';
+                console.log('Camera started successfully.');
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                statusDiv.textContent = 'Unable to access the camera. Check permissions and try again.';
+            }
+        }
+
+        startCamera();
+    </script>
+	<script>
+		navigator.mediaDevices.enumerateDevices()
+			.then(devices => {
+				devices.forEach(device => {
+					console.log(`${device.kind}: ${device.label} (ID: ${device.deviceId})`);
+				});
+			})
+			.catch(error => console.error('Error enumerating devices:', error));
+	</script>
+</body>
+</html>

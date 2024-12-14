@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Recognition</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        video, canvas {
+            border: 2px solid #333;
+            border-radius: 8px;
+            width: 640px;
+            height: 480px;
+            background-color: #000;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <video id="camera" autoplay playsinline></video>
+    <canvas id="snapshot" style="display:none;"></canvas>
+    <div id="status">Initializing camera...</div>
+
+    <script>
+        const videoElement = document.getElementById('camera');
+        const canvasElement = document.getElementById('snapshot');
+        const statusDiv = document.getElementById('status');
+        const API_KEY = 'AIzaSyDs8YSWvmGmcaHaMAToND0Ie9bsec9CO6Q'; // Replace with your API key
+
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                videoElement.srcObject = stream;
+                statusDiv.textContent = 'Camera started successfully.';
+                console.log('Camera started successfully.');
+                analyzeEmotion();
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                statusDiv.textContent = 'Unable to access the camera. Check permissions and try again.';
+            }
+        }
+
+        function takeSnapshot() {
+            const context = canvasElement.getContext('2d');
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+            return canvasElement.toDataURL('image/jpeg');
+        }
+
+        async function analyzeEmotion() {
+            setInterval(async () => {
+                const imageBase64 = takeSnapshot().split(',')[1]; // Get base64 without the header
+
+                const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        requests: [
+                            {
+                                image: { content: imageBase64 },
+                                features: [
+                                    { type: 'FACE_DETECTION', maxResults: 1 }
+                                ]
+                            }
+                        ]
+                    })
+                });
+
+                const data = await response.json();
+                const annotations = data.responses[0].faceAnnotations;
+
+                if (annotations && annotations.length > 0) {
+                    const emotions = annotations[0];
+                    const emotionScores = {
+                        joy: emotions.joyLikelihood,
+                        sorrow: emotions.sorrowLikelihood,
+                        anger: emotions.angerLikelihood,
+                        surprise: emotions.surpriseLikelihood
+                    };
+
+                    const dominantEmotion = Object.keys(emotionScores).reduce((a, b) => 
+                        emotionScores[a] > emotionScores[b] ? a : b
+                    );
+
+                    statusDiv.textContent = `Dominant Emotion: ${dominantEmotion}`;
+                } else {
+                    statusDiv.textContent = 'No face detected.';
+                }
+            }, 5000); // Analyze every 5 seconds
+        }
+
+        startCamera();
+    </script>
+</body>
+</html>
